@@ -1,12 +1,10 @@
 // client/src/api/axios.js
 import axios from "axios";
 
-// Create axios instance with baseURL
 const API = axios.create({
   baseURL: process.env.REACT_APP_API_URL || "http://localhost:8000",
 });
 
-// Request interceptor → add access token
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("access");
   if (token) {
@@ -15,7 +13,7 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor → auto-refresh access token
+// ✅ Response interceptor → refresh token if expired
 API.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -27,15 +25,12 @@ API.interceptors.response.use(
       try {
         const refresh = localStorage.getItem("refresh");
         if (refresh) {
-          // 👇 Notice: use the same baseURL instead of hardcoding localhost
           const res = await axios.post(
-            `${process.env.REACT_APP_API_URL || "http://localhost:8000"}/api/auth/refresh/`,
+            "http://127.0.0.1:8000/api/auth/refresh/", // ⛔ might need fixing later
             { refresh }
           );
 
           localStorage.setItem("access", res.data.access);
-
-          // Retry the failed request with new token
           originalRequest.headers.Authorization = `Bearer ${res.data.access}`;
           return API(originalRequest);
         }
@@ -43,12 +38,14 @@ API.interceptors.response.use(
         console.error("❌ Refresh token failed:", err);
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
-        window.location.href = "/login"; // force re-login
+        window.location.href = "/login";
       }
     }
 
     return Promise.reject(error);
   }
 );
+
+console.log("🔍 API Base URL →", API.defaults.baseURL); // 👈 add this line
 
 export default API;
