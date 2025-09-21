@@ -5,7 +5,7 @@ const API = axios.create({
   baseURL: process.env.REACT_APP_API_URL || "http://localhost:8000",
 });
 
-// ✅ Attach token to every request
+//  Attach token to every request
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("access");
   if (token) {
@@ -14,7 +14,7 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-// ✅ Handle expired tokens automatically
+//  Handle expired tokens automatically
 API.interceptors.response.use(
   (response) => response,
   async (error) => {
