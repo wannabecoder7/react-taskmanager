@@ -1,10 +1,12 @@
 // client/src/api/axios.js
 import axios from "axios";
 
-const API = axios.create({   // axios Instance
-  baseURL: "http://127.0.0.1:8000/api/",
+// Create axios instance with baseURL
+const API = axios.create({
+  baseURL: process.env.REACT_APP_API_URL || "http://localhost:8000",
 });
 
+// Request interceptor → add access token
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("access");
   if (token) {
@@ -13,7 +15,7 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-// ✅ Response interceptor → refresh token if expired
+// Response interceptor → auto-refresh access token
 API.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -25,8 +27,9 @@ API.interceptors.response.use(
       try {
         const refresh = localStorage.getItem("refresh");
         if (refresh) {
-          const res = await axios.post(// API call to get new access tokens
-            "http://127.0.0.1:8000/api/auth/refresh/",
+          // 👇 Notice: use the same baseURL instead of hardcoding localhost
+          const res = await axios.post(
+            `${process.env.REACT_APP_API_URL || "http://localhost:8000"}/api/auth/refresh/`,
             { refresh }
           );
 
