@@ -10,7 +10,7 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await API.post("auth/login/", { username, password }); // 👈 send username
+      const res = await API.post("/api/auth/login/", { username, password }); // 👈 send username
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
       navigate("/dashboard");
