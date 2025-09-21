@@ -3,33 +3,44 @@ import API from "../api/axios";
 import { useNavigate, Link } from "react-router-dom";
 
 export default function Login() {
-  const [username, setUsername] = useState("");  // 👈 use username
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState(""); // 👈 track error
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError(""); // reset error on each attempt
+
     try {
-      const res = await API.post("/api/auth/login/", { username, password }); // 👈 send username
+      const res = await API.post("/api/auth/login/", { username, password });
+
+      // ✅ Save tokens
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
+
       navigate("/dashboard");
     } catch (err) {
       console.error("❌ Login failed:", err.response?.data || err.message);
-      alert("Login failed");
+
+      // ✅ Show backend error if available
+      setError(err.response?.data?.detail || "Login failed. Please try again.");
     }
   };
 
   return (
     <div className="flex items-center justify-center h-screen bg-gray-100">
       <div className="bg-white p-8 shadow rounded min-w-80">
-        <div className=" text-center text-2xl font-bold mb-6 mx-auto">Login</div>
+        <div className="text-center text-2xl font-bold mb-6 mx-auto">Login</div>
+
+        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
+
         <form onSubmit={handleLogin} className="space-y-4">
           <input
             type="text"
-            placeholder="Username"   // 👈 changed
+            placeholder="Username"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}  // 👈 fixed
+            onChange={(e) => setUsername(e.target.value)}
             className="w-full p-2 border rounded"
             required
           />
@@ -43,7 +54,7 @@ export default function Login() {
           />
           <button
             type="submit"
-            className="w-full bg-blue-500 text-white py-2 rounded"
+            className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
           >
             Login
           </button>
@@ -58,4 +69,4 @@ export default function Login() {
       </div>
     </div>
   );
-}{/*     L*_MTiem2W_Nw8g                 */}
+}

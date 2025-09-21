@@ -25,13 +25,13 @@ export default function Dashboard() {
     }
 
     // 1) get current user
-    API.get("auth/me/")
+    API.get("/api/auth/me/")
       .then((res) => {
         setUser(res.data);
 
         // 2) if admin, fetch users list for dropdown
         if (res.data.is_staff || res.data.is_superuser) {
-          API.get("auth/all/")
+          API.get("/api/auth/all/")
             .then((res2) => {
               setUsers(res2.data.results || res2.data || []);
             })
@@ -43,7 +43,7 @@ export default function Dashboard() {
       .catch((err) => console.error("❌ Failed to fetch current user:", err));
 
     // fetch tasks (backend returns tasks filtered by user or all tasks if admin)
-    API.get("tasks/")
+    API.get("/api/tasks/")
       .then((res) => {
         setTasks(res.data.results || res.data || []);
       })
@@ -63,7 +63,7 @@ export default function Dashboard() {
         payload.user = assignUser;
       }
 
-      const res = await API.post("tasks/", payload);
+      const res = await API.post("/api/tasks/", payload);
       setTasks((prev) => [...prev, res.data]);
       setNewTask("");
       setAssignUser("");
@@ -83,29 +83,25 @@ export default function Dashboard() {
         : "TODO";
 
     try {
-      const res = await API.patch(`tasks/${id}/`, { status: nextStatus });
+      const res = await API.patch(`/api/tasks/${id}/`, { status: nextStatus });
       const serverData = res.data || {};
 
       setTasks((prev) =>
         prev.map((t) => {
           if (t.id !== id) return t;
 
-          // preserve existing notes (if any), otherwise fall back to server notes
           const preservedNotes = t.notes && t.notes.length ? t.notes : serverData.notes || [];
-
-          // preserve existing user (if client has it), otherwise use server user
           const preservedUser = t.user || serverData.user || null;
 
           return {
-            ...t, // keep any client-only fields
-            ...serverData, // apply fields returned by server (status, timestamps, etc.)
+            ...t,
+            ...serverData,
             notes: preservedNotes,
             user: preservedUser,
           };
         })
       );
 
-      // If modal is open for this task, update activeTask too but keep its notes
       if (activeTask?.id === id) {
         setActiveTask((at) => {
           const preservedNotes = at.notes && at.notes.length ? at.notes : serverData.notes || [];
@@ -127,7 +123,7 @@ export default function Dashboard() {
   // Delete task
   const handleDeleteTask = async (id) => {
     try {
-      await API.delete(`tasks/${id}/`);
+      await API.delete(`/api/tasks/${id}/`);
       setTasks((prev) => prev.filter((t) => t.id !== id));
       if (activeTask?.id === id) setActiveTask(null);
     } catch (err) {
@@ -136,11 +132,11 @@ export default function Dashboard() {
     }
   };
 
-  // Open note modal (view or edit depending on whether a note exists)
+  // Open note modal
   const handleViewNote = (task) => {
     setActiveTask(task);
     setNoteContent(task.notes?.length ? task.notes[0].content : "");
-    setIsEditingNote(!task.notes?.length); // if no note, open in edit mode
+    setIsEditingNote(!task.notes?.length);
   };
 
   // Save note (create or update)
@@ -150,12 +146,10 @@ export default function Dashboard() {
     try {
       let res;
       if (activeTask.notes?.length) {
-        // Update existing note (assume first note)
         const noteId = activeTask.notes[0].id;
-        res = await API.patch(`notes/${noteId}/`, { content: noteContent });
+        res = await API.patch(`/api/notes/${noteId}/`, { content: noteContent });
       } else {
-        // Create new note; assume notes serializer expects task (id), title, content
-        res = await API.post("notes/", {
+        res = await API.post("/api/notes/", {
           task: activeTask.id,
           title: `Note for ${activeTask.title}`,
           content: noteContent,
@@ -163,7 +157,6 @@ export default function Dashboard() {
       }
 
       const updatedTask = { ...activeTask, notes: [res.data] };
-
       setActiveTask(updatedTask);
       setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
       setIsEditingNote(false);
@@ -179,7 +172,7 @@ export default function Dashboard() {
 
     try {
       const noteId = activeTask.notes[0].id;
-      await API.delete(`notes/${noteId}/`);
+      await API.delete(`/api/notes/${noteId}/`);
 
       const updatedTask = { ...activeTask, notes: [] };
       setActiveTask(updatedTask);
@@ -191,7 +184,7 @@ export default function Dashboard() {
     }
   };
 
-  // Render a single column (To Do / In Progress / Done)
+  // Render Kanban column
   const renderColumn = (status, title) => (
     <div className="w-1/3 bg-gray-100 p-4 rounded-lg shadow-inner">
       <h2 className="text-lg font-semibold text-gray-700 border-b pb-2 mb-4 text-center">
@@ -206,6 +199,7 @@ export default function Dashboard() {
         .filter((task) => task.status === status)
         .map((task) => (
           <div
+            key={task.id}
             className={`p-4 mb-3 bg-white shadow rounded-lg border-l-4 ${
               status === "TODO"
                 ? "border-red-400"
@@ -214,7 +208,6 @@ export default function Dashboard() {
                 : "border-green-400"
             }`}
           >
-            {/* Task title + status tag */}
             <div className="flex justify-between items-center mb-2">
               <span className="font-semibold text-gray-800">{task.title}</span>
               <span
@@ -230,7 +223,6 @@ export default function Dashboard() {
               </span>
             </div>
 
-            {/* Meta info */}
             <div className="text-xs text-gray-500 mb-1">
               Created: {task.created_at ? new Date(task.created_at).toLocaleString() : "—"}
             </div>
@@ -243,7 +235,6 @@ export default function Dashboard() {
               Assigned to: {task.user?.username ?? (typeof task.user === "string" ? task.user : "Unassigned")}
             </div>
 
-            {/* Action buttons */}
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => handleViewNote(task)}
@@ -278,7 +269,6 @@ export default function Dashboard() {
 
   return (
     <div className="h-screen bg-gray-50 p-6 overflow-auto">
-      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-4xl font-extrabold 
         bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-transparent 
@@ -290,7 +280,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Add Task Form */}
       <form onSubmit={handleAddTask} className="mb-6 flex items-center gap-2">
         <input
           type="text"
@@ -300,7 +289,6 @@ export default function Dashboard() {
           className="flex-1 p-2 rounded border"
         />
 
-        {/* show dropdown only for admins */}
         {(user?.is_staff || user?.is_superuser) && (
           <select value={assignUser} onChange={(e) => setAssignUser(e.target.value)} className="p-2 border rounded">
             <option value="">Assign to...</option>
@@ -315,14 +303,12 @@ export default function Dashboard() {
         <button className="bg-blue-500 text-white px-4 py-2 rounded">Add</button>
       </form>
 
-      {/* Kanban Columns */}
       <div className="flex space-x-4">
         {renderColumn("TODO", "To Do")}
         {renderColumn("IN_PROGRESS", "In Progress")}
         {renderColumn("DONE", "Done")}
       </div>
 
-      {/* Note Modal */}
       {activeTask && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded shadow w-96">
